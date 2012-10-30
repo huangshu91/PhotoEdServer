@@ -2,6 +2,8 @@ package com.photoed.server;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Date;
+import java.util.Iterator;
 
 import javax.servlet.http.*;
 
@@ -74,18 +76,8 @@ public class PhotoEdServerServlet extends HttpServlet {
       
     }
     
-    // need to write a proper xml (or find one) builder
-    if (id != null) {
-      ret += "<id>" + id + "</id>";
-    }
-    ret += "<extra>testing sup</extra>";
-
-    if (stringdata != null) {
-      ret += "<stringdata>" + stringdata + "</stringdata>";
-    }
     // get request type
     // transType = req.getParameter("requestType");
-    resp.getWriter().write(ret);
 
   }
   
@@ -125,7 +117,7 @@ public class PhotoEdServerServlet extends HttpServlet {
   
   public void createPicture(HttpServletRequest req, HttpServletResponse resp) throws IOException, FileUploadException {
     // Need to double check that the this is the correct encoding for the image
-    byte[] imgStream = req.getParameter("image").getBytes("UTF-16");
+    byte[] imgStream = req.getParameter("image").getBytes("UTF-16LE");
     
     ImagesService imagesService = ImagesServiceFactory.getImagesService();
 
@@ -137,15 +129,17 @@ public class PhotoEdServerServlet extends HttpServlet {
 
     byte[] newImageData = newImage.getImageData();
     
-    String className = req.getParameter("classname");
+    //String className = req.getParameter("classname");
     String groupName = req.getParameter("groupname");
     String imageName = req.getParameter("imagename");
+    Date date = new Date();
     
     Entity newPicture = new Entity("Picture");
-    newPicture.setProperty("class", className);
+    //newPicture.setProperty("class", className);
     newPicture.setProperty("group", groupName);
     newPicture.setProperty("imagename", imageName);
     newPicture.setProperty("image", newImageData);
+    newPicture.setProperty("date", date);
     
     datastore.put(newPicture);
   }
@@ -154,8 +148,13 @@ public class PhotoEdServerServlet extends HttpServlet {
   public void fetchGroup (HttpServletRequest req, HttpServletResponse resp) throws IOException {
     Query que = new Query("Group");
     Iterable<Entity> results = datastore.prepare(que).asIterable();
+    Iterator<Entity> it = results.iterator();
+    String ret = "";
     
-    
+    while (it.hasNext()) {
+      ret += "<group>"+it.next().getProperty("name")+"</group>\n";
+    }
+    resp.getWriter().write(ret);
   }
   
   public void fetchThumbs (HttpServletRequest req, HttpServletResponse resp) throws IOException {
@@ -169,8 +168,25 @@ public class PhotoEdServerServlet extends HttpServlet {
   }
   
   public void fetchPicture (HttpServletRequest req, HttpServletResponse resp) throws IOException {
+    Query que = new Query("Picture");
+    Iterable<Entity> results = datastore.prepare(que).asIterable();
+    Iterator<Entity> it = results.iterator();
+    String ret = "";
     
+    // Eventually only want to fetch pictures in group X with date > Y
+    String groupName = req.getParameter("groupname");
+    String date = req.getParameter("date");
     
+    while (it.hasNext()) {
+      Entity temp = it.next();
+      ret += "<image>";
+      ret += "<imagename>"+temp.getProperty("imagename")+"</imagename>\n";
+      ret += "<time>"+temp.getProperty("date")+"</imagename>\n";
+      ret += "<image>"+temp.getProperty("image")+"</image>\n";
+      ret += "</image>\n";
+    }
+    
+    resp.getWriter().write(ret);
   }
 
   /**
