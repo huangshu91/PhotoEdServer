@@ -117,6 +117,14 @@ public class PhotoEdServerServlet extends HttpServlet {
   
   public void createPicture(HttpServletRequest req, HttpServletResponse resp) throws IOException, FileUploadException {
     // Need to double check that the this is the correct encoding for the image
+    
+    Log.i("received create picture request");
+    if (req.getParameter("image") == null) {
+      String ret = "failure";
+      resp.getWriter().write(ret);
+      return;
+    }
+    
     byte[] imgStream = req.getParameter("image").getBytes("UTF-16LE");
     
     ImagesService imagesService = ImagesServiceFactory.getImagesService();
@@ -142,6 +150,9 @@ public class PhotoEdServerServlet extends HttpServlet {
     newPicture.setProperty("date", date);
     
     datastore.put(newPicture);
+    
+    String ret = "success";
+    resp.getWriter().write(ret);
   }
   
   // ONLY GROUPS IN FIRST VERSION, DO NOT USE CLASS
