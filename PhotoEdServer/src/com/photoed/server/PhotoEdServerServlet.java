@@ -12,6 +12,7 @@ import org.apache.commons.fileupload.FileItemStream;
 import org.apache.commons.fileupload.FileUploadException;
 import org.apache.commons.fileupload.servlet.ServletFileUpload;
 
+import com.google.appengine.api.datastore.Blob;
 import com.google.appengine.api.datastore.DatastoreService;
 import com.google.appengine.api.datastore.DatastoreServiceFactory;
 import com.google.appengine.api.datastore.Entity;
@@ -37,13 +38,21 @@ public class PhotoEdServerServlet extends HttpServlet {
 
     resp.setContentType("text/xml");
 
-    String id = req.getParameter("id");
-    String stringdata = req.getParameter("stringdata");
+    //String id = req.getParameter("id");
+    //String stringdata = req.getParameter("stringdata");
     String ret = "";
     datastore = DatastoreServiceFactory.getDatastoreService();
 
     String requestType = req.getParameter("type");
+    
     if (requestType == null) return;
+    
+    if (requestType.equals("test")) {
+      Log.i("testingtestingtesting");
+      Entity test = new Entity("test");
+      datastore.put(test);
+      resp.getWriter().write("test success");
+    }
     
     if (requestType.equals("createclassgroup")) {
       createClassGroup(req, resp);
@@ -67,7 +76,7 @@ public class PhotoEdServerServlet extends HttpServlet {
     }
     
     if (requestType.equals("fetchthumbs")) {
-      fetchThumbs(req, resp);
+      fetchPicture(req, resp);
     }
     
     if (requestType.equals("fetchcomment")) {
@@ -100,15 +109,15 @@ public class PhotoEdServerServlet extends HttpServlet {
   }
   
   public void createComment (HttpServletRequest req, HttpServletResponse resp) throws IOException {
-    String className = req.getParameter("classname");
-    String groupName = req.getParameter("groupname");
+    //String className = req.getParameter("classname");
+    //String groupName = req.getParameter("groupname");
     String imageName = req.getParameter("imagename");
     String comment = req.getParameter("comment");
     
     Entity newComment = new Entity("Comment");
     
-    newComment.setProperty("class", className);
-    newComment.setProperty("group", groupName);
+    //newComment.setProperty("class", className);
+    //newComment.setProperty("group", groupName);
     newComment.setProperty("imagename", imageName);
     newComment.setProperty("comment", comment);
     
@@ -116,37 +125,45 @@ public class PhotoEdServerServlet extends HttpServlet {
   }
   
   public void createPicture(HttpServletRequest req, HttpServletResponse resp) throws IOException, FileUploadException {
-    // Need to double check that the this is the correct encoding for the image
-    
     Log.i("received create picture request");
+    /*
     if (req.getParameter("image") == null) {
       String ret = "failure";
       resp.getWriter().write(ret);
       return;
     }
+    */
+    byte[] imgStream = req.getParameter("image").getBytes("UTF-8");
+    String imagetest = new String(imgStream);
+    Blob imgBlob = new Blob(imgStream);
+    //ImagesService imagesService = ImagesServiceFactory.getImagesService();
     
-    byte[] imgStream = req.getParameter("image").getBytes("UTF-16LE");
-    
-    ImagesService imagesService = ImagesServiceFactory.getImagesService();
 
-    Image oldImage = ImagesServiceFactory.makeImage(imgStream);
+    //Image oldImage = ImagesServiceFactory.makeImage(imgStream);
     // This does not change resolution, just makes it a MAX of 500 width, 500 height
-    Transform resize = ImagesServiceFactory.makeResize(500, 500);
+    //Transform resize = ImagesServiceFactory.makeResize(500, 500);
 
-    Image newImage = imagesService.applyTransform(resize, oldImage);
+    //Image newImage = imagesService.applyTransform(resize, oldImage);
 
-    byte[] newImageData = newImage.getImageData();
+    //byte[] newImageData = newImage.getImageData();
     
     //String className = req.getParameter("classname");
+    String image = req.getParameter("image");
     String groupName = req.getParameter("groupname");
     String imageName = req.getParameter("imagename");
     Date date = new Date();
+
+    Log.i(image);
+    Log.i("test convert byte[] back to string");
+    Log.i(imagetest);
+    Log.i("size of blob: "+imgBlob.toString());
     
     Entity newPicture = new Entity("Picture");
     //newPicture.setProperty("class", className);
     newPicture.setProperty("group", groupName);
     newPicture.setProperty("imagename", imageName);
-    newPicture.setProperty("image", newImageData);
+
+    newPicture.setProperty("image", imgBlob);
     newPicture.setProperty("date", date);
     
     datastore.put(newPicture);
@@ -183,20 +200,25 @@ public class PhotoEdServerServlet extends HttpServlet {
     Iterable<Entity> results = datastore.prepare(que).asIterable();
     Iterator<Entity> it = results.iterator();
     String ret = "";
-    
+    int counter = 0;
     // Eventually only want to fetch pictures in group X with date > Y
-    String groupName = req.getParameter("groupname");
-    String date = req.getParameter("date");
+    //String groupName = req.getParameter("groupname");
+    //String date = req.getParameter("date");
     
     while (it.hasNext()) {
+      counter++;
       Entity temp = it.next();
-      ret += "<image>";
+      Blob newblob = (Blob) temp.getProperty("image");
+      byte[] img = newblob.getBytes();
+      String imagetest = new String(img);
+      ret += "<image>\n";
       ret += "<imagename>"+temp.getProperty("imagename")+"</imagename>\n";
       ret += "<time>"+temp.getProperty("date")+"</imagename>\n";
-      ret += "<image>"+temp.getProperty("image")+"</image>\n";
+      ret += "<imagedata>"+imagetest+"</imagedata>\n";
       ret += "</image>\n";
     }
     
+    Log.i("query size: "+counter+" ret message: "+ret);
     resp.getWriter().write(ret);
   }
 
