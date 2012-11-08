@@ -109,15 +109,15 @@ public class PhotoEdServerServlet extends HttpServlet {
   }
   
   public void createComment (HttpServletRequest req, HttpServletResponse resp) throws IOException {
-    //String className = req.getParameter("classname");
-    //String groupName = req.getParameter("groupname");
+    String className = req.getParameter("classname");
+    String groupName = req.getParameter("groupname");
     String imageName = req.getParameter("imagename");
     String comment = req.getParameter("comment");
     
     Entity newComment = new Entity("Comment");
     
-    //newComment.setProperty("class", className);
-    //newComment.setProperty("group", groupName);
+    newComment.setProperty("class", className);
+    newComment.setProperty("group", groupName);
     newComment.setProperty("imagename", imageName);
     newComment.setProperty("comment", comment);
     
@@ -213,7 +213,7 @@ public class PhotoEdServerServlet extends HttpServlet {
       String imagetest = new String(img);
       ret += "<image>\n";
       ret += "<imagename>"+temp.getProperty("imagename")+"</imagename>\n";
-      ret += "<time>"+temp.getProperty("date")+"</imagename>\n";
+      ret += "<time>"+temp.getProperty("date")+"</time>\n";
       ret += "<imagedata>"+imagetest+"</imagedata>\n";
       ret += "</image>\n";
     }
