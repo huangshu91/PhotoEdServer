@@ -71,7 +71,7 @@ public class PhotoEdServerServlet extends HttpServlet {
       createComment(req, resp);
     }
     
-    if (requestType.equals("fetchgroup")) {
+    if (requestType.equals("fetchclass")) {
       fetchGroup(req, resp);
     }
     
@@ -80,9 +80,11 @@ public class PhotoEdServerServlet extends HttpServlet {
     }
     
     if (requestType.equals("fetchcomment")) {
-      
-      
-      
+      fetchComment(req, resp);
+    }
+    
+    if (requestType.equals("deletepictures")) {
+      deletePictures(req, resp);
     }
     
     // get request type
@@ -90,22 +92,42 @@ public class PhotoEdServerServlet extends HttpServlet {
 
   }
   
-  // ONLY USE GROUP FOR FIRST VERSION
+  public void deletePictures(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+    Query que = new Query("Picture");
+    Iterable<Entity> results = datastore.prepare(que).asIterable();
+    Iterator<Entity> it = results.iterator();
+    
+    while (it.hasNext()) {
+      datastore.delete(it.next().getKey());
+    }
+    
+    Query que2 = new Query("Comment");
+    Iterable<Entity> results2 = datastore.prepare(que2).asIterable();
+    Iterator<Entity> it2 = results2.iterator();
+    
+    while(it2.hasNext()) {
+      datastore.delete(it.next().getKey());
+      
+    }
+  }
+  
+  // ONLY USE CLASS FOR FIRST VERSION
   public void createClassGroup (HttpServletRequest req, HttpServletResponse resp) throws IOException {
-    String groupName = req.getParameter("groupname");
+    //String groupName = req.getParameter("groupname");
     String className = req.getParameter("classname");
-    String type;
-    if (groupName == null) type = "Class"; 
-    else type = "Group";
+    String admin = req.getParameter("adminname");
     
-    Entity newGroup = new Entity(type);
+    Entity newClass = new Entity(className);
     
-    newGroup.setProperty("members", "");
+    newClass.setProperty("admin", admin);
     
-    if (type.equals("class")) newGroup.setProperty("name", className);
-    else newGroup.setProperty("name", groupName);
+    datastore.put(newClass);
+  }
+  
+  public void fetchClass(HttpServletRequest req, HttpServletResponse resp) throws IOException {
     
-    datastore.put(newGroup);
+    
+    
   }
   
   public void createComment (HttpServletRequest req, HttpServletResponse resp) throws IOException {
@@ -113,9 +135,11 @@ public class PhotoEdServerServlet extends HttpServlet {
     String groupName = req.getParameter("groupname");
     String imageName = req.getParameter("imagename");
     String comment = req.getParameter("comment");
+    String user = req.getParameter("user");
     
     Entity newComment = new Entity("Comment");
     
+    newComment.setProperty("user", user);
     newComment.setProperty("class", className);
     newComment.setProperty("group", groupName);
     newComment.setProperty("imagename", imageName);
@@ -126,42 +150,25 @@ public class PhotoEdServerServlet extends HttpServlet {
   
   public void createPicture(HttpServletRequest req, HttpServletResponse resp) throws IOException, FileUploadException {
     Log.i("received create picture request");
-    /*
-    if (req.getParameter("image") == null) {
-      String ret = "failure";
-      resp.getWriter().write(ret);
-      return;
-    }
-    */
+    
     byte[] imgStream = req.getParameter("image").getBytes("UTF-8");
     String imagetest = new String(imgStream);
     Blob imgBlob = new Blob(imgStream);
-    //ImagesService imagesService = ImagesServiceFactory.getImagesService();
-    
 
-    //Image oldImage = ImagesServiceFactory.makeImage(imgStream);
-    // This does not change resolution, just makes it a MAX of 500 width, 500 height
-    //Transform resize = ImagesServiceFactory.makeResize(500, 500);
-
-    //Image newImage = imagesService.applyTransform(resize, oldImage);
-
-    //byte[] newImageData = newImage.getImageData();
-    
-    //String className = req.getParameter("classname");
     String image = req.getParameter("image");
     String groupName = req.getParameter("groupname");
     String imageName = req.getParameter("imagename");
     Date date = new Date();
 
-    Log.i(image);
+    //Log.i(image);
     Log.i("test convert byte[] back to string");
-    Log.i(imagetest);
+    //Log.i(imagetest);
     Log.i("size of blob: "+imgBlob.toString());
     
     Entity newPicture = new Entity("Picture");
     //newPicture.setProperty("class", className);
     newPicture.setProperty("group", groupName);
-    newPicture.setProperty("imagename", imageName);
+    newPicture.setProperty("imagename", date);
 
     newPicture.setProperty("image", imgBlob);
     newPicture.setProperty("date", date);
@@ -172,9 +179,9 @@ public class PhotoEdServerServlet extends HttpServlet {
     resp.getWriter().write(ret);
   }
   
-  // ONLY GROUPS IN FIRST VERSION, DO NOT USE CLASS
+  // ONLY GROUPS IN FIRST VERSION, DO NOT USE THIS
   public void fetchGroup (HttpServletRequest req, HttpServletResponse resp) throws IOException {
-    Query que = new Query("Group");
+    Query que = new Query("Class");
     Iterable<Entity> results = datastore.prepare(que).asIterable();
     Iterator<Entity> it = results.iterator();
     String ret = "";
@@ -186,12 +193,30 @@ public class PhotoEdServerServlet extends HttpServlet {
   }
   
   public void fetchThumbs (HttpServletRequest req, HttpServletResponse resp) throws IOException {
-  
+    
   }
   
-  
   public void fetchComment (HttpServletRequest req, HttpServletResponse resp) throws IOException {
+    Log.i("fetchcomment");
+    String imageName = req.getParameter("imagename");
+    Log.i(imageName);
+    Query getcom = new Query("Comment");
+    getcom.addFilter("imagename", Query.FilterOperator.EQUAL, imageName);
+    Iterable<Entity> coms = datastore.prepare(getcom).asIterable();
+    Iterator<Entity> comit = coms.iterator();
     
+    String ret = "";
+    
+    while (comit.hasNext()) {
+      Entity temp2 = comit.next();
+      ret += "<comment>\n";
+      ret += "<text>"+temp2.getProperty("comment")+"</text>\n";
+      ret += "<user>"+temp2.getProperty("user")+"</user>\n";
+      ret += "</comment>\n";
+    }
+    
+    Log.i(ret);
+    resp.getWriter().write(ret);
     
   }
   
@@ -218,7 +243,7 @@ public class PhotoEdServerServlet extends HttpServlet {
       ret += "</image>\n";
     }
     
-    Log.i("query size: "+counter+" ret message: "+ret);
+    //Log.i("query size: "+counter+" ret message: "+ret);
     resp.getWriter().write(ret);
   }
 
