@@ -47,13 +47,6 @@ public class PhotoEdServerServlet extends HttpServlet {
     
     if (requestType == null) return;
     
-    if (requestType.equals("test")) {
-      Log.i("testingtestingtesting");
-      Entity test = new Entity("test");
-      datastore.put(test);
-      resp.getWriter().write("test success");
-    }
-    
     if (requestType.equals("createclassgroup")) {
       createClassGroup(req, resp);
     }
@@ -72,7 +65,7 @@ public class PhotoEdServerServlet extends HttpServlet {
     }
     
     if (requestType.equals("fetchclass")) {
-      fetchGroup(req, resp);
+      fetchClass(req, resp);
     }
     
     if (requestType.equals("fetchthumbs")) {
@@ -115,19 +108,24 @@ public class PhotoEdServerServlet extends HttpServlet {
   public void createClassGroup (HttpServletRequest req, HttpServletResponse resp) throws IOException {
     //String groupName = req.getParameter("groupname");
     String className = req.getParameter("classname");
+    
+    Query getcom = new Query("Class");
+    getcom.addFilter("classname", Query.FilterOperator.EQUAL, className);
+    Iterable<Entity> coms = datastore.prepare(getcom).asIterable();
+    Iterator<Entity> comit = coms.iterator();
+    
+    if (comit.hasNext()) {
+      return;
+    }
+    
     String admin = req.getParameter("adminname");
     
-    Entity newClass = new Entity(className);
+    Entity newClass = new Entity("Class");
     
+    newClass.setProperty("classname", className);
     newClass.setProperty("admin", admin);
     
     datastore.put(newClass);
-  }
-  
-  public void fetchClass(HttpServletRequest req, HttpServletResponse resp) throws IOException {
-    
-    
-    
   }
   
   public void createComment (HttpServletRequest req, HttpServletResponse resp) throws IOException {
@@ -156,8 +154,9 @@ public class PhotoEdServerServlet extends HttpServlet {
     Blob imgBlob = new Blob(imgStream);
 
     String image = req.getParameter("image");
-    String groupName = req.getParameter("groupname");
+    String className = req.getParameter("classname");
     String imageName = req.getParameter("imagename");
+    String user = req.getParameter("username");
     Date date = new Date();
 
     //Log.i(image);
@@ -166,8 +165,9 @@ public class PhotoEdServerServlet extends HttpServlet {
     Log.i("size of blob: "+imgBlob.toString());
     
     Entity newPicture = new Entity("Picture");
-    //newPicture.setProperty("class", className);
-    newPicture.setProperty("group", groupName);
+    newPicture.setProperty("classname", className);
+    //newPicture.setProperty("group", groupName);
+    newPicture.setProperty("username", user);
     newPicture.setProperty("imagename", date);
 
     newPicture.setProperty("image", imgBlob);
@@ -180,15 +180,21 @@ public class PhotoEdServerServlet extends HttpServlet {
   }
   
   // ONLY GROUPS IN FIRST VERSION, DO NOT USE THIS
-  public void fetchGroup (HttpServletRequest req, HttpServletResponse resp) throws IOException {
+  public void fetchClass (HttpServletRequest req, HttpServletResponse resp) throws IOException {
     Query que = new Query("Class");
     Iterable<Entity> results = datastore.prepare(que).asIterable();
     Iterator<Entity> it = results.iterator();
     String ret = "";
     
     while (it.hasNext()) {
-      ret += "<group>"+it.next().getProperty("name")+"</group>\n";
+      Entity temp = it.next();
+      ret += "<class>\n";
+      ret += "<group>"+temp.getProperty("classname")+"</group>\n";
+      ret += "<admin>"+temp.getProperty("admin")+"</admin>\n";
+      ret += "</class>\n";
+      
     }
+    Log.i(ret);
     resp.getWriter().write(ret);
   }
   
@@ -222,6 +228,8 @@ public class PhotoEdServerServlet extends HttpServlet {
   
   public void fetchPicture (HttpServletRequest req, HttpServletResponse resp) throws IOException {
     Query que = new Query("Picture");
+    String className = req.getParameter("classname");
+    que.addFilter("classname", Query.FilterOperator.EQUAL ,className);
     Iterable<Entity> results = datastore.prepare(que).asIterable();
     Iterator<Entity> it = results.iterator();
     String ret = "";
@@ -239,6 +247,7 @@ public class PhotoEdServerServlet extends HttpServlet {
       ret += "<image>\n";
       ret += "<imagename>"+temp.getProperty("imagename")+"</imagename>\n";
       ret += "<time>"+temp.getProperty("date")+"</time>\n";
+      ret += "<user>"+temp.getProperty("username")+"</user>\n";
       ret += "<imagedata>"+imagetest+"</imagedata>\n";
       ret += "</image>\n";
     }
